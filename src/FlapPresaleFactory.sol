@@ -11,8 +11,8 @@ import {FlapPresale} from "src/FlapPresale.sol";
 
 /// @title FlapPresaleFactory
 /// @notice Deploys FlapPresale clones for tokens already created via FlapTokenFactory.
-/// @dev Pulls the custody amount (70% = 200M liquidity + 500M presale) and ownership expectations
-///      from the caller, so the presale can later inject 20% liquidity and migrate the token machine.
+/// @dev Pulls the custody amount (CUSTODY_TOKEN_AMOUNT = liquidity + presale) and ownership expectations
+///      from the caller, so the presale can later inject LIQUIDITY_TOKEN_AMOUNT and migrate the token machine.
 contract FlapPresaleFactory is Ownable {
     using Clones for address;
     using SafeERC20 for IERC20;
@@ -34,8 +34,8 @@ contract FlapPresaleFactory is Ownable {
     /// @notice Immutable FlapPresale implementation address used for cloning.
     address public immutable presaleImplementation;
 
-    /// @notice Fixed custody amount pulled into each presale: Liquidity + Presale (20% + 50% = 70%).
-    ///         The remaining 30% (300M) stays with the creator and is never custodied.
+    /// @notice Fixed custody amount pulled into each presale: Liquidity + Presale (CUSTODY_TOKEN_AMOUNT).
+    ///         The remainder of the supply stays with the creator and is never custodied.
     uint256 public constant CUSTODY_TOKEN_AMOUNT = 700_000_000 ether;
 
     /// @notice All presales created by this factory.
@@ -53,8 +53,8 @@ contract FlapPresaleFactory is Ownable {
     }
 
     /// @notice Creates a presale for an existing token owned by the caller.
-    /// @dev Caller must hold the full 1B supply, approve this factory to pull the custody amount (70%),
-    ///      and own the token. The remaining 30% (300M) stays with the creator.
+    /// @dev Caller must hold the full supply, approve this factory to pull the custody amount,
+    ///      and own the token. The remainder of the supply stays with the creator.
     /// @param params Presale configuration (token, router, caps, vesting, etc.).
     ///        `params.creator` is overridden with `msg.sender`.
     /// @return presale Address of the newly deployed presale clone.
@@ -93,7 +93,7 @@ contract FlapPresaleFactory is Ownable {
             })
         );
 
-        // 3. Custody: pull custody amount (70%) from caller into presale
+        // 3. Custody: pull custody amount from caller into presale
         IERC20(params.token).safeTransferFrom(msg.sender, presale, requiredSupply);
 
         // 4. Record indexes

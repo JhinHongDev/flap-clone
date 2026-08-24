@@ -38,7 +38,7 @@ contract FlapTokenFactory is Ownable {
     event QuoteTokenUpdated(address indexed oldQuoteToken, address indexed newQuoteToken);
 
     // --- Constants ---
-    uint16 public constant MAX_TAX_RATE = 1000; // 10% max tax limit in basis points
+    uint16 public constant MAX_TAX_RATE = 1000; // max tax limit in basis points
 
     // --- State Variables ---
     /// @notice The immutable FlapTaxTokenV3 implementation contract address.
