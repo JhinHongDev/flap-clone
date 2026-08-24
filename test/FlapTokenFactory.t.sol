@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import {Test} from "forge-std/Test.sol";
 import {FlapTaxTokenV3} from "src/FlapTaxTokenV3.sol";
 import {FlapTokenFactory} from "src/FlapTokenFactory.sol";
+import {FlapTaxProcessor} from "src/FlapTaxProcessor.sol";
 import {IFlapTaxTokenV3} from "src/interfaces/IFlapTaxTokenV3.sol";
 import {IPancakeFactory, IPancakeRouter02} from "src/interfaces/IPancakeRouter02.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -53,19 +54,22 @@ contract FlapTokenFactoryTest is Test {
     MockWBNB public wbnb;
 
     address public alice = address(0xA11CE);
-    address public taxProcessor = address(0x7A7);
+    address public feeReceiver = address(0x7A7);
+    address public taxProcessorImplementation;
 
     function setUp() public {
         wbnb = new MockWBNB();
         pancakeFactory = new MockPancakeFactory();
         pancakeRouter = new MockPancakeRouter(address(pancakeFactory), address(wbnb));
 
-        // Deploy implementation
+        // Deploy implementations
         implementation = new FlapTaxTokenV3(1000 ether, 10000 ether);
+        taxProcessorImplementation = address(new FlapTaxProcessor());
 
         // Deploy factory
         factory = new FlapTokenFactory(
             address(implementation),
+            taxProcessorImplementation,
             address(pancakeRouter),
             address(wbnb)
         );
@@ -84,6 +88,13 @@ contract FlapTokenFactoryTest is Test {
         assertEq(IFlapTaxTokenV3(token).balanceOf(alice), 1e9 ether);
         assertEq(IFlapTaxTokenV3(token).mainPool(), pair);
         assertEq(uint8(IFlapTaxTokenV3(token).state()), uint8(IFlapTaxTokenV3.PoolState.BondingCurve));
+
+        // A dedicated tax processor is auto-deployed and bound to the token
+        address taxProcessor = factory.taxProcessorOfToken(token);
+        assertTrue(taxProcessor != address(0));
+        assertEq(FlapTaxProcessor(payable(taxProcessor)).taxToken(), token);
+        assertEq(FlapTaxProcessor(payable(taxProcessor)).feeReceiver(), feeReceiver);
+        assertEq(IFlapTaxTokenV3(token).taxProcessor(), taxProcessor);
     }
 
     function test_CreateTaxToken_RevertIfTaxExceedsLimit() public {
@@ -112,7 +123,7 @@ contract FlapTokenFactoryTest is Test {
             meta: "ipfs://test",
             buyTax: 500,
             sellTax: 500,
-            taxProcessor: address(0x7A7),
+            feeReceiver: address(0x7A7),
             dividendContract: address(0),
             liqExpectedOutputAmount: 0,
             taxDuration: 7 days,

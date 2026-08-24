@@ -8,6 +8,7 @@ import {FlapPresaleFactory} from "src/FlapPresaleFactory.sol";
 import {FlapPresale} from "src/FlapPresale.sol";
 import {FlapTokenFactory} from "src/FlapTokenFactory.sol";
 import {FlapTaxTokenV3} from "src/FlapTaxTokenV3.sol";
+import {FlapTaxProcessor} from "src/FlapTaxProcessor.sol";
 import {IFlapTaxTokenV3} from "src/interfaces/IFlapTaxTokenV3.sol";
 import {MockWBNB} from "./FlapTokenFactory.t.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -39,7 +40,7 @@ contract FlapPresaleFactoryTest is Test {
     FlapPresaleFactory public presaleFactory;
     MockFullRouter public router;
     MockWBNB public wbnb;
-    address public taxProcessor = address(0x7A7);
+    address public feeReceiver = address(0x7A7);
 
     address public alice = address(0xA11CE);
     address public bob = address(0xB0B);
@@ -52,7 +53,12 @@ contract FlapPresaleFactoryTest is Test {
         router = new MockFullRouter(address(pairFactory), address(wbnb));
 
         FlapTaxTokenV3 tokenImpl = new FlapTaxTokenV3(1000 ether, 10000 ether);
-        tokenFactory = new FlapTokenFactory(address(tokenImpl), address(router), address(wbnb));
+        tokenFactory = new FlapTokenFactory(
+            address(tokenImpl),
+            address(new FlapTaxProcessor()),
+            address(router),
+            address(wbnb)
+        );
         presaleFactory = new FlapPresaleFactory(address(new FlapPresale()));
 
         vm.deal(alice, 10 ether);
@@ -66,7 +72,7 @@ contract FlapPresaleFactoryTest is Test {
             meta: "ipfs://test",
             buyTax: 500,
             sellTax: 500,
-            taxProcessor: taxProcessor,
+            feeReceiver: feeReceiver,
             dividendContract: address(0),
             liqExpectedOutputAmount: 0,
             taxDuration: 30 days,
