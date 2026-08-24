@@ -15,13 +15,7 @@
 
 ## 2. 文件与代码隔离准则（绝对红线）
 
-* **严禁修改老版代码**：
-  * `src/legacy/CoordinatorFactory.sol`
-  * `src/legacy/presaleAA.sol`
-  * `src/legacy/Token.sol`
-  * `src/legacy/OpenZeppelinDependencies.sol`
-  * `src/legacy/Interfaces.sol`
-  这些老文件仅供历史参考，**任何情况下都不得改动**。
+* **旧版合约仅供参考**：旧版合约代码已移出 `src/`，归档为 skill（`.agents/skills/legacy-contract-references/`），**任何情况下都不得改动、不得移植、不得作为新代码的编码风格来源**。需要理解旧版设计时，加载该 skill 查阅。
 * **新文件独立创建**：所有重构后的新合约均创建于全新的独立文件中（如 `src/FlapPresaleFactory.sol`, `src/FlapTaxProcessor.sol`, `src/FlapPresale.sol` 等）。
 
 ---
