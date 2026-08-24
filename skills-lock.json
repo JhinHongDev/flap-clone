@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "skills": {
+    "develop-secure-contracts": {
+      "source": "OpenZeppelin/openzeppelin-skills",
+      "sourceType": "github",
+      "skillPath": "skills/develop-secure-contracts/SKILL.md",
+      "computedHash": "92aa3881d7c5db98ce41670852668cfbe691576284d05d78a72587cdb2760fe8"
+    },
+    "setup-solidity-contracts": {
+      "source": "OpenZeppelin/openzeppelin-skills",
+      "sourceType": "github",
+      "skillPath": "skills/setup-solidity-contracts/SKILL.md",
+      "computedHash": "9c0e45a4afb334c5460811d1c2db5ba7d7756f9e401b250921322c6aab86be64"
+    },
+    "solidity-security": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/blockchain-web3/skills/solidity-security/SKILL.md",
+      "computedHash": "14ce11370490def3e2249ca01891d1b2ce7cecb4450a7ec2a10181ff0ad23d06"
+    },
+    "upgrade-solidity-contracts": {
+      "source": "OpenZeppelin/openzeppelin-skills",
+      "sourceType": "github",
+      "skillPath": "skills/upgrade-solidity-contracts/SKILL.md",
+      "computedHash": "ef8776be9fd2ee6721f6b6b29992bf6029a6122797b3cec6fe3ce185b22be4ef"
+    }
+  }
+}
