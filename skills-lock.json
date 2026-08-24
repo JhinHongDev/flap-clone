@@ -7,6 +7,12 @@
       "skillPath": "skills/develop-secure-contracts/SKILL.md",
       "computedHash": "92aa3881d7c5db98ce41670852668cfbe691576284d05d78a72587cdb2760fe8"
     },
+    "ponytail": {
+      "source": "dietrichgebert/ponytail",
+      "sourceType": "github",
+      "skillPath": "skills/ponytail/SKILL.md",
+      "computedHash": "210fa0831f649ce9f8a305f7b7c8cf2a0dd09ac4dd53067109941b96e7811d4e"
+    },
     "setup-solidity-contracts": {
       "source": "OpenZeppelin/openzeppelin-skills",
       "sourceType": "github",
