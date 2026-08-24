@@ -107,15 +107,15 @@ contract FlapPresaleFactoryTest is Test {
         assertEq(FlapTaxTokenV3(token).balanceOf(alice), 1_000_000_000 ether);
         assertEq(FlapTaxTokenV3(token).owner(), alice);
 
-        // Approve factory to pull supply
+        // Approve factory to pull the custody amount (70% = 700M)
         vm.startPrank(alice);
-        FlapTaxTokenV3(token).approve(address(presaleFactory), 1_000_000_000 ether);
+        FlapTaxTokenV3(token).approve(address(presaleFactory), 700_000_000 ether);
         address presale = presaleFactory.createPresale(_presaleParams(token));
         vm.stopPrank();
 
-        // Full supply custodied into presale; creator then hands over token ownership
-        assertEq(FlapTaxTokenV3(token).balanceOf(presale), 1_000_000_000 ether);
-        assertEq(FlapTaxTokenV3(token).balanceOf(alice), 0);
+        // Custody amount (700M) custodied into presale; 300M stays with creator
+        assertEq(FlapTaxTokenV3(token).balanceOf(presale), 700_000_000 ether);
+        assertEq(FlapTaxTokenV3(token).balanceOf(alice), 300_000_000 ether);
         assertEq(FlapTaxTokenV3(token).owner(), alice);
         assertEq(FlapPresale(payable(presale)).creator(), alice);
         assertEq(presaleFactory.presaleOfToken(token), presale);
@@ -153,7 +153,7 @@ contract FlapPresaleFactoryTest is Test {
         address token = _createToken(alice);
 
         vm.startPrank(alice);
-        FlapTaxTokenV3(token).approve(address(presaleFactory), 1_000_000_000 ether);
+        FlapTaxTokenV3(token).approve(address(presaleFactory), 700_000_000 ether);
         presaleFactory.createPresale(_presaleParams(token));
 
         // Second attempt must fail (no tokens left anyway + already registered)
@@ -167,7 +167,7 @@ contract FlapPresaleFactoryTest is Test {
 
         // Alice creates presale via factory
         vm.startPrank(alice);
-        FlapTaxTokenV3(token).approve(address(presaleFactory), 1_000_000_000 ether);
+        FlapTaxTokenV3(token).approve(address(presaleFactory), 700_000_000 ether);
         address presaleAddr = presaleFactory.createPresale(_presaleParams(token));
         vm.stopPrank();
         FlapPresale presale = FlapPresale(payable(presaleAddr));
@@ -187,20 +187,20 @@ contract FlapPresaleFactoryTest is Test {
         assertEq(uint8(FlapTaxTokenV3(token).state()), uint8(IFlapTaxTokenV3.PoolState.TaxEnforcedAntiFarmer));
         assertTrue(presale.presaleFinalized());
 
-        // Bob is the only depositor: his 2 BNB = 100% of presale → 200M tokens; TGE 20% = 40M
-        assertEq(presale.getClaimableAmount(bob), 40_000_000 ether);
+        // Bob is the only depositor: his 2 BNB = 100% of presale → 500M tokens; TGE 20% = 100M
+        assertEq(presale.getClaimableAmount(bob), 100_000_000 ether);
 
         vm.prank(bob);
         presale.claim();
-        assertEq(FlapTaxTokenV3(token).balanceOf(bob), 40_000_000 ether);
+        assertEq(FlapTaxTokenV3(token).balanceOf(bob), 100_000_000 ether);
 
-        // Warp to full vesting end: remaining 160M claimable
+        // Warp to full vesting end: remaining 400M claimable
         vm.warp(block.timestamp + 10 days);
-        assertEq(presale.getClaimableAmount(bob), 160_000_000 ether);
+        assertEq(presale.getClaimableAmount(bob), 400_000_000 ether);
 
         vm.prank(bob);
         presale.claim();
-        assertEq(FlapTaxTokenV3(token).balanceOf(bob), 200_000_000 ether);
+        assertEq(FlapTaxTokenV3(token).balanceOf(bob), 500_000_000 ether);
     }
 }
 

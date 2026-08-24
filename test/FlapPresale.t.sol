@@ -103,8 +103,9 @@ contract FlapPresaleTest is Test {
             })
         );
 
-        // Token was minted to this test contract during initialize(); transfer 1B tokens & ownership to presale
-        token.transfer(address(presale), 1_000_000_000 ether);
+        // Token was minted to this test contract during initialize(); transfer custody amount
+        // (700M = 200M liquidity + 500M presale) & ownership to presale; 300M stays here (creator-held)
+        token.transfer(address(presale), 700_000_000 ether);
         token.transferOwnership(address(presale));
 
         // Fund test users
@@ -149,8 +150,8 @@ contract FlapPresaleTest is Test {
         presale.finalizePresale();
 
         assertTrue(presale.presaleFinalized());
-        // Verify PancakeRouter received 800M tokens + 4 BNB, sent to BLACK_HOLE
-        assertEq(router.lastTokenAmount(), 800_000_000 ether);
+        // Verify PancakeRouter received 200M tokens + 4 BNB, sent to BLACK_HOLE
+        assertEq(router.lastTokenAmount(), 200_000_000 ether);
         assertEq(router.lastETHAmount(), 4 ether);
         assertEq(router.lastLPReceiver(), blackHole);
 
@@ -162,7 +163,7 @@ contract FlapPresaleTest is Test {
     }
 
     function test_VestingClaim_TGE_And_Linear() public {
-        // Alice deposits 4 BNB (100% of presale) -> entitled to 200,000,000 tokens
+        // Alice deposits 4 BNB (100% of presale) -> entitled to 500,000,000 tokens
         vm.prank(alice);
         presale.deposit{value: 4 ether}();
 
@@ -170,30 +171,30 @@ contract FlapPresaleTest is Test {
         presale.finalizePresale();
 
         // 1. Immediately after finalization: Alice claims 20% TGE
-        // 20% of 200,000,000 = 40,000,000 tokens
-        assertEq(presale.getClaimableAmount(alice), 40_000_000 ether);
+        // 20% of 500,000,000 = 100,000,000 tokens
+        assertEq(presale.getClaimableAmount(alice), 100_000_000 ether);
 
         vm.prank(alice);
         presale.claim();
-        assertEq(token.balanceOf(alice), 40_000_000 ether);
+        assertEq(token.balanceOf(alice), 100_000_000 ether);
         assertEq(presale.getClaimableAmount(alice), 0);
 
         // 2. Warp 5 days (50% of the 10-day vesting duration)
-        // Remaining 160,000,000 * 50% = 80,000,000 tokens unlocked
+        // Remaining 400,000,000 * 50% = 200,000,000 tokens unlocked
         vm.warp(block.timestamp + 5 days);
-        assertEq(presale.getClaimableAmount(alice), 80_000_000 ether);
+        assertEq(presale.getClaimableAmount(alice), 200_000_000 ether);
 
         vm.prank(alice);
         presale.claim();
-        assertEq(token.balanceOf(alice), 120_000_000 ether); // 40M + 80M
+        assertEq(token.balanceOf(alice), 300_000_000 ether); // 100M + 200M
 
         // 3. Warp another 5 days (total 10 days - 100% complete)
         vm.warp(block.timestamp + 5 days);
-        assertEq(presale.getClaimableAmount(alice), 80_000_000 ether); // Final 80M
+        assertEq(presale.getClaimableAmount(alice), 200_000_000 ether); // Final 200M
 
         vm.prank(alice);
         presale.claim();
-        assertEq(token.balanceOf(alice), 200_000_000 ether); // 100% of 200M presale allocation
+        assertEq(token.balanceOf(alice), 500_000_000 ether); // 100% of 500M presale allocation
         assertEq(presale.getClaimableAmount(alice), 0);
     }
 }

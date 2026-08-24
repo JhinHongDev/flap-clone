@@ -13,7 +13,8 @@ import {IPancakeRouter02} from "src/interfaces/IPancakeRouter02.sol";
 /// @title FlapPresale
 /// @notice Manages BNB presale subscriptions, PancakeSwap V2 liquidity injection with burned LP,
 ///         and linear vesting claim schedules for FlapTaxTokenV3 on BSC.
-/// @dev 100% of 1B token supply is split into 80% (800M) Liquidity + 20% (200M) Presale.
+/// @dev 1B supply is split into 20% (200M) Liquidity + 30% (300M, held by creator) +
+///      50% (500M) Presale. Only 70% (700M) is custodied here.
 contract FlapPresale is Initializable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
 
@@ -54,8 +55,11 @@ contract FlapPresale is Initializable, OwnableUpgradeable, ReentrancyGuardUpgrad
 
     // --- Constants ---
     uint256 public constant TOTAL_SUPPLY = 1_000_000_000 ether;       // 10 亿固定总量
-    uint256 public constant LIQUIDITY_TOKEN_AMOUNT = 800_000_000 ether; // 80% (8 亿枚) 底池份额
-    uint256 public constant PRESALE_TOKEN_AMOUNT = 200_000_000 ether;   // 20% (2 亿枚) 预售份额
+    uint256 public constant LIQUIDITY_TOKEN_AMOUNT = 200_000_000 ether; // 20% (2 亿枚) 底池份额
+    uint256 public constant PRESALE_TOKEN_AMOUNT = 500_000_000 ether;   // 50% (5 亿枚) 预售份额
+    /// @notice 托管在本合约内的代币总量 = 加池份额 + 预售份额 (20% + 50% = 70%)。
+    ///        剩余 30% (3 亿枚) 由创建者自持，不进入本合约。
+    uint256 public constant CUSTODY_TOKEN_AMOUNT = LIQUIDITY_TOKEN_AMOUNT + PRESALE_TOKEN_AMOUNT;
     uint256 public constant BPS_DENOMINATOR = 10000;
     address public constant BLACK_HOLE = 0x000000000000000000000000000000000000dEaD;
 
@@ -197,7 +201,7 @@ contract FlapPresale is Initializable, OwnableUpgradeable, ReentrancyGuardUpgrad
         if (totalDepositedBNB == 0) revert NoBNBDeposited();
 
         uint256 contractTokenBal = IERC20(token).balanceOf(address(this));
-        if (contractTokenBal < TOTAL_SUPPLY) revert InsufficientTokenBalance();
+        if (contractTokenBal < CUSTODY_TOKEN_AMOUNT) revert InsufficientTokenBalance();
 
         // Creator must have handed over token ownership so this presale can migrate the state machine
         address tokenOwner = OwnableUpgradeable(token).owner();
