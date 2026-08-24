@@ -6,7 +6,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {OwnableUpgradeable} from "@openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IFlapTaxTokenV3} from "./interfaces/IFlapTaxTokenV3.sol";
-import {IPancakeFactory, IPancakeRouter02} from "./Interfaces.sol";
+import {IPancakeFactory, IPancakeRouter02} from "./legacy/Interfaces.sol";
 
 /// @title FlapTokenFactory
 /// @notice Factory contract for deploying and initializing FlapTaxTokenV3 minimal proxies on BSC.
@@ -105,15 +105,16 @@ contract FlapTokenFactory is Ownable {
     // --- Factory Functions ---
 
     /// @notice Deploys a new FlapTaxTokenV3 clone and initializes it with the specified parameters.
+    /// @dev Caller receives the full 1B supply and token ownership.
     /// @param params Token configuration parameters.
-    /// @param recipient Address to receive total token supply and contract ownership.
     /// @return tokenAddress The deployed token proxy address.
     /// @return pairAddress The PancakeSwap V2 pair address created for this token.
-    function createTaxToken(
-        CreateTokenParams calldata params,
-        address recipient
-    ) external returns (address tokenAddress, address pairAddress) {
-        if (recipient == address(0) || params.taxProcessor == address(0)) {
+    function createTaxToken(CreateTokenParams calldata params)
+        external
+        returns (address tokenAddress, address pairAddress)
+    {
+        address recipient = msg.sender;
+        if (params.taxProcessor == address(0)) {
             revert ZeroAddress();
         }
         if (params.buyTax > MAX_TAX_RATE) {

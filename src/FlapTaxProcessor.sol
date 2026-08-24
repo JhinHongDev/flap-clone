@@ -9,7 +9,7 @@ import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/
 
 import {ITaxProcessor, PackedFeeConfig, PackedFeeConfigV2, TaxProcessorInitParams} from "./interfaces/ITaxProcessor.sol";
 import {IDividend} from "./interfaces/IDividend.sol";
-import {IPancakeRouter02} from "./Interfaces.sol";
+import {IPancakeRouter02} from "./legacy/Interfaces.sol";
 
 /// @title FlapTaxProcessor
 /// @notice Dedicated tax processing contract for FlapTaxTokenV3 on BSC.

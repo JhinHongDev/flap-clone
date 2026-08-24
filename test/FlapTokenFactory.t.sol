@@ -5,8 +5,8 @@ import {Test} from "forge-std/Test.sol";
 import {FlapTaxTokenV3} from "../src/FlapTaxTokenV3.sol";
 import {FlapTokenFactory} from "../src/FlapTokenFactory.sol";
 import {IFlapTaxTokenV3} from "../src/interfaces/IFlapTaxTokenV3.sol";
-import {IPancakeFactory, IPancakeRouter02} from "../src/Interfaces.sol";
-import {ERC20} from "../src/OpenZeppelinDependencies.sol";
+import {IPancakeFactory, IPancakeRouter02} from "../src/legacy/Interfaces.sol";
+import {ERC20} from "../src/legacy/OpenZeppelinDependencies.sol";
 
 contract MockWBNB is ERC20 {
     constructor() ERC20("Wrapped BNB", "WBNB") {}
@@ -67,7 +67,7 @@ contract FlapTokenFactoryTest is Test {
         FlapTokenFactory.CreateTokenParams memory params = _defaultParams();
 
         vm.prank(alice);
-        (address token, address pair) = factory.createTaxToken(params, alice);
+        (address token, address pair) = factory.createTaxToken(params);
 
         assertTrue(token != address(0));
         assertTrue(pair != address(0));
@@ -83,7 +83,7 @@ contract FlapTokenFactoryTest is Test {
         params.buyTax = 1001; // > 10% (1000 bps)
 
         vm.expectRevert(abi.encodeWithSelector(FlapTokenFactory.TaxRateExceedsLimit.selector, 1001));
-        factory.createTaxToken(params, alice);
+        factory.createTaxToken(params);
     }
 
     function test_CreateTaxToken_AcceptsAtExactLimit() public {
@@ -92,7 +92,7 @@ contract FlapTokenFactoryTest is Test {
         params.sellTax = 1000;
 
         vm.prank(alice);
-        (address token, ) = factory.createTaxToken(params, alice);
+        (address token, ) = factory.createTaxToken(params);
         assertEq(IFlapTaxTokenV3(token).buyTaxRate(), 1000);
         assertEq(IFlapTaxTokenV3(token).sellTaxRate(), 1000);
     }

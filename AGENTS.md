@@ -28,11 +28,11 @@
 ## 2. 文件与代码隔离准则（绝对红线）
 
 * **严禁修改老版代码**：
-  * `src/CoordinatorFactory.sol`
-  * `src/presaleAA.sol`
-  * `src/Token.sol`
-  * `src/OpenZeppelinDependencies.sol`
-  * `src/Interfaces.sol`
+  * `src/legacy/CoordinatorFactory.sol`
+  * `src/legacy/presaleAA.sol`
+  * `src/legacy/Token.sol`
+  * `src/legacy/OpenZeppelinDependencies.sol`
+  * `src/legacy/Interfaces.sol`
   这些老文件仅供历史参考，**任何情况下都不得改动**。
 * **新文件独立创建**：所有重构后的新合约均创建于全新的独立文件中（如 `src/FlapPresaleFactory.sol`, `src/FlapTaxProcessor.sol`, `src/FlapPresale.sol` 等）。
 

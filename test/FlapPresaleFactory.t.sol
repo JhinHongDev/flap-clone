@@ -10,7 +10,7 @@ import {FlapTokenFactory} from "../src/FlapTokenFactory.sol";
 import {FlapTaxTokenV3} from "../src/FlapTaxTokenV3.sol";
 import {IFlapTaxTokenV3} from "../src/interfaces/IFlapTaxTokenV3.sol";
 import {MockWBNB} from "./FlapTokenFactory.t.sol";
-import {ERC20} from "../src/OpenZeppelinDependencies.sol";
+import {ERC20} from "../src/legacy/OpenZeppelinDependencies.sol";
 
 /// @dev Full-featured mock router: pair creation + addLiquidityETH for E2E presale flow.
 contract MockFullRouter {
@@ -72,8 +72,8 @@ contract FlapPresaleFactoryTest is Test {
             taxDuration: 30 days,
             antiFarmerDuration: 1 days
         });
-        vm.prank(alice);
-        (address token, ) = tokenFactory.createTaxToken(params, recipient);
+        vm.prank(recipient);
+        (address token, ) = tokenFactory.createTaxToken(params);
         return token;
     }
 

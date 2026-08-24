@@ -6,8 +6,8 @@ import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {FlapPresale} from "../src/FlapPresale.sol";
 import {FlapTaxTokenV3} from "../src/FlapTaxTokenV3.sol";
 import {IFlapTaxTokenV3} from "../src/interfaces/IFlapTaxTokenV3.sol";
-import {IPancakeFactory, IPancakeRouter02} from "../src/Interfaces.sol";
-import {ERC20} from "../src/OpenZeppelinDependencies.sol";
+import {IPancakeFactory, IPancakeRouter02} from "../src/legacy/Interfaces.sol";
+import {ERC20} from "../src/legacy/OpenZeppelinDependencies.sol";
 
 contract MockWBNB is ERC20 {
     constructor() ERC20("Wrapped BNB", "WBNB") {}

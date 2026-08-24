@@ -8,7 +8,7 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {IFlapTaxTokenV3} from "./interfaces/IFlapTaxTokenV3.sol";
-import {IPancakeRouter02} from "./Interfaces.sol";
+import {IPancakeRouter02} from "./legacy/Interfaces.sol";
 
 /// @title FlapPresale
 /// @notice Manages BNB presale subscriptions, PancakeSwap V2 liquidity injection with burned LP,
