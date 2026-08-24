@@ -5,8 +5,8 @@ import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {OwnableUpgradeable} from "@openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {IFlapTaxTokenV3} from "./interfaces/IFlapTaxTokenV3.sol";
-import {IPancakeFactory, IPancakeRouter02} from "./legacy/Interfaces.sol";
+import {IFlapTaxTokenV3} from "src/interfaces/IFlapTaxTokenV3.sol";
+import {IPancakeFactory, IPancakeRouter02} from "src/interfaces/IPancakeRouter02.sol";
 
 /// @title FlapTokenFactory
 /// @notice Factory contract for deploying and initializing FlapTaxTokenV3 minimal proxies on BSC.

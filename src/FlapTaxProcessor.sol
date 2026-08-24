@@ -7,9 +7,9 @@ import {ReentrancyGuardUpgradeable} from "@openzeppelin-contracts-upgradeable/se
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {ITaxProcessor, PackedFeeConfig, PackedFeeConfigV2, TaxProcessorInitParams} from "./interfaces/ITaxProcessor.sol";
-import {IDividend} from "./interfaces/IDividend.sol";
-import {IPancakeRouter02} from "./legacy/Interfaces.sol";
+import {ITaxProcessor, PackedFeeConfig, PackedFeeConfigV2, TaxProcessorInitParams} from "src/interfaces/ITaxProcessor.sol";
+import {IDividend} from "src/interfaces/IDividend.sol";
+import {IPancakeRouter02} from "src/interfaces/IPancakeRouter02.sol";
 
 /// @title FlapTaxProcessor
 /// @notice Dedicated tax processing contract for FlapTaxTokenV3 on BSC.

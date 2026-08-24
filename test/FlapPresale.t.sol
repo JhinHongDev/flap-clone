@@ -3,11 +3,11 @@ pragma solidity ^0.8.13;
 
 import {Test} from "forge-std/Test.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
-import {FlapPresale} from "../src/FlapPresale.sol";
-import {FlapTaxTokenV3} from "../src/FlapTaxTokenV3.sol";
-import {IFlapTaxTokenV3} from "../src/interfaces/IFlapTaxTokenV3.sol";
-import {IPancakeFactory, IPancakeRouter02} from "../src/legacy/Interfaces.sol";
-import {ERC20} from "../src/legacy/OpenZeppelinDependencies.sol";
+import {FlapPresale} from "src/FlapPresale.sol";
+import {FlapTaxTokenV3} from "src/FlapTaxTokenV3.sol";
+import {IFlapTaxTokenV3} from "src/interfaces/IFlapTaxTokenV3.sol";
+import {IPancakeFactory, IPancakeRouter02} from "src/interfaces/IPancakeRouter02.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract MockWBNB is ERC20 {
     constructor() ERC20("Wrapped BNB", "WBNB") {}

@@ -9,9 +9,9 @@ import {ERC20PermitUpgradeable} from
 import {OwnableUpgradeable} from "@openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IDividend} from "./interfaces/IDividend.sol";
-import {IFlapTaxTokenV3} from "./interfaces/IFlapTaxTokenV3.sol";
-import {ITaxProcessor} from "./interfaces/ITaxProcessor.sol";
+import {IDividend} from "src/interfaces/IDividend.sol";
+import {IFlapTaxTokenV3} from "src/interfaces/IFlapTaxTokenV3.sol";
+import {ITaxProcessor} from "src/interfaces/ITaxProcessor.sol";
 
 // revision:
 //   v0.0.1: initial version (forked from FlapTaxTokenV2)

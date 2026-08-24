@@ -7,7 +7,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {OwnableUpgradeable} from "@openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import {FlapPresale} from "./FlapPresale.sol";
+import {FlapPresale} from "src/FlapPresale.sol";
 
 /// @title FlapPresaleFactory
 /// @notice Deploys FlapPresale clones for tokens already created via FlapTokenFactory.

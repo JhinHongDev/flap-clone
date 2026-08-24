@@ -4,13 +4,13 @@ pragma solidity ^0.8.13;
 import {Test} from "forge-std/Test.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
-import {FlapPresaleFactory} from "../src/FlapPresaleFactory.sol";
-import {FlapPresale} from "../src/FlapPresale.sol";
-import {FlapTokenFactory} from "../src/FlapTokenFactory.sol";
-import {FlapTaxTokenV3} from "../src/FlapTaxTokenV3.sol";
-import {IFlapTaxTokenV3} from "../src/interfaces/IFlapTaxTokenV3.sol";
+import {FlapPresaleFactory} from "src/FlapPresaleFactory.sol";
+import {FlapPresale} from "src/FlapPresale.sol";
+import {FlapTokenFactory} from "src/FlapTokenFactory.sol";
+import {FlapTaxTokenV3} from "src/FlapTaxTokenV3.sol";
+import {IFlapTaxTokenV3} from "src/interfaces/IFlapTaxTokenV3.sol";
 import {MockWBNB} from "./FlapTokenFactory.t.sol";
-import {ERC20} from "../src/legacy/OpenZeppelinDependencies.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /// @dev Full-featured mock router: pair creation + addLiquidityETH for E2E presale flow.
 contract MockFullRouter {

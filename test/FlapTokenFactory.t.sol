@@ -2,11 +2,11 @@
 pragma solidity ^0.8.13;
 
 import {Test} from "forge-std/Test.sol";
-import {FlapTaxTokenV3} from "../src/FlapTaxTokenV3.sol";
-import {FlapTokenFactory} from "../src/FlapTokenFactory.sol";
-import {IFlapTaxTokenV3} from "../src/interfaces/IFlapTaxTokenV3.sol";
-import {IPancakeFactory, IPancakeRouter02} from "../src/legacy/Interfaces.sol";
-import {ERC20} from "../src/legacy/OpenZeppelinDependencies.sol";
+import {FlapTaxTokenV3} from "src/FlapTaxTokenV3.sol";
+import {FlapTokenFactory} from "src/FlapTokenFactory.sol";
+import {IFlapTaxTokenV3} from "src/interfaces/IFlapTaxTokenV3.sol";
+import {IPancakeFactory, IPancakeRouter02} from "src/interfaces/IPancakeRouter02.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract MockWBNB is ERC20 {
     constructor() ERC20("Wrapped BNB", "WBNB") {}
@@ -25,6 +25,14 @@ contract MockPancakeFactory is IPancakeFactory {
         pairs[tokenA][tokenB] = pair;
         pairs[tokenB][tokenA] = pair;
     }
+
+    function feeTo() external view returns (address) { return address(0); }
+    function feeToSetter() external view returns (address) { return address(0); }
+    function allPairs(uint) external view returns (address) { return address(0); }
+    function allPairsLength() external view returns (uint) { return 0; }
+    function setFeeTo(address) external {}
+    function setFeeToSetter(address) external {}
+    function INIT_CODE_PAIR_HASH() external view returns (bytes32) { return bytes32(0); }
 }
 
 contract MockPancakeRouter {

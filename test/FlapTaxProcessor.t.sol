@@ -3,10 +3,10 @@ pragma solidity ^0.8.13;
 
 import {Test} from "forge-std/Test.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
-import {FlapTaxProcessor} from "../src/FlapTaxProcessor.sol";
-import {TaxProcessorInitParams, PackedFeeConfig} from "../src/interfaces/ITaxProcessor.sol";
-import {IDividend} from "../src/interfaces/IDividend.sol";
-import {ERC20} from "../src/legacy/OpenZeppelinDependencies.sol";
+import {FlapTaxProcessor} from "src/FlapTaxProcessor.sol";
+import {TaxProcessorInitParams, PackedFeeConfig} from "src/interfaces/ITaxProcessor.sol";
+import {IDividend} from "src/interfaces/IDividend.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract MockToken is ERC20 {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {
