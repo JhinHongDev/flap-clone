@@ -97,8 +97,10 @@ contract FlapPresaleFactoryTest is Test {
             maxBuyPerWallet: 5 ether,
             startTime: 0,
             endTime: 0,
-            tgePercentage: 2000,
-            vestingDuration: 10 days
+            userCliff: 7 days,
+            userVestingDuration: 10 days,
+            creatorCliff: 30 days,
+            creatorVestingDuration: 60 days
         });
     }
 
@@ -107,15 +109,15 @@ contract FlapPresaleFactoryTest is Test {
         assertEq(FlapTaxTokenV3(token).balanceOf(alice), 1_000_000_000 ether);
         assertEq(FlapTaxTokenV3(token).owner(), alice);
 
-        // Approve factory to pull the custody amount (70% = 700M)
+        // Approve factory to pull the full custody amount (100% = 1B)
         vm.startPrank(alice);
-        FlapTaxTokenV3(token).approve(address(presaleFactory), 700_000_000 ether);
+        FlapTaxTokenV3(token).approve(address(presaleFactory), 1_000_000_000 ether);
         address presale = presaleFactory.createPresale(_presaleParams(token));
         vm.stopPrank();
 
-        // Custody amount (700M) custodied into presale; 300M stays with creator
-        assertEq(FlapTaxTokenV3(token).balanceOf(presale), 700_000_000 ether);
-        assertEq(FlapTaxTokenV3(token).balanceOf(alice), 300_000_000 ether);
+        // 100% (1B) custodied into presale; 0 stays with creator
+        assertEq(FlapTaxTokenV3(token).balanceOf(presale), 1_000_000_000 ether);
+        assertEq(FlapTaxTokenV3(token).balanceOf(alice), 0);
         assertEq(FlapTaxTokenV3(token).owner(), alice);
         assertEq(FlapPresale(payable(presale)).creator(), alice);
         assertEq(presaleFactory.presaleOfToken(token), presale);
@@ -153,7 +155,7 @@ contract FlapPresaleFactoryTest is Test {
         address token = _createToken(alice);
 
         vm.startPrank(alice);
-        FlapTaxTokenV3(token).approve(address(presaleFactory), 700_000_000 ether);
+        FlapTaxTokenV3(token).approve(address(presaleFactory), 1_000_000_000 ether);
         presaleFactory.createPresale(_presaleParams(token));
 
         // Second attempt must fail (no tokens left anyway + already registered)
@@ -165,9 +167,9 @@ contract FlapPresaleFactoryTest is Test {
     function test_EndToEnd_Deposit_Finalize_Claim() public {
         address token = _createToken(alice);
 
-        // Alice creates presale via factory
+        // Alice creates presale via factory (100% = 1B tokens approved and pulled)
         vm.startPrank(alice);
-        FlapTaxTokenV3(token).approve(address(presaleFactory), 700_000_000 ether);
+        FlapTaxTokenV3(token).approve(address(presaleFactory), 1_000_000_000 ether);
         address presaleAddr = presaleFactory.createPresale(_presaleParams(token));
         vm.stopPrank();
         FlapPresale presale = FlapPresale(payable(presaleAddr));
@@ -187,20 +189,37 @@ contract FlapPresaleFactoryTest is Test {
         assertEq(uint8(FlapTaxTokenV3(token).state()), uint8(IFlapTaxTokenV3.PoolState.TaxEnforcedAntiFarmer));
         assertTrue(presale.presaleFinalized());
 
-        // Bob is the only depositor: his 2 BNB = 100% of presale → 500M tokens; TGE 20% = 100M
-        assertEq(presale.getClaimableAmount(bob), 100_000_000 ether);
+        // Bob is the only depositor: his 2 BNB = 100% of presale → 500M tokens;
+        // During 7-day Cliff: 0 claimable at TGE
+        assertEq(presale.getClaimableAmount(bob), 0);
+
+        // Warp past user cliff (7 days) + 5 days into vesting (50% of 10 days) -> 250M claimable
+        vm.warp(block.timestamp + 7 days + 5 days);
+        assertEq(presale.getClaimableAmount(bob), 250_000_000 ether);
 
         vm.prank(bob);
         presale.claim();
-        assertEq(FlapTaxTokenV3(token).balanceOf(bob), 100_000_000 ether);
+        assertEq(FlapTaxTokenV3(token).balanceOf(bob), 250_000_000 ether);
 
-        // Warp to full vesting end: remaining 400M claimable
-        vm.warp(block.timestamp + 10 days);
-        assertEq(presale.getClaimableAmount(bob), 400_000_000 ether);
+        // Warp remaining 5 days (user vesting complete): remaining 250M claimable
+        vm.warp(block.timestamp + 5 days);
+        assertEq(presale.getClaimableAmount(bob), 250_000_000 ether);
 
         vm.prank(bob);
         presale.claim();
         assertEq(FlapTaxTokenV3(token).balanceOf(bob), 500_000_000 ether);
+
+        // Creator (Alice) checks: at 17 days (7 + 5 + 5), still inside Creator Cliff (30 days) -> 0 tokens
+        assertEq(presale.getClaimableCreatorAmount(), 0);
+        assertEq(FlapTaxTokenV3(token).balanceOf(alice), 0);
+
+        // Warp past Creator Cliff (30 days total = 13 more days) + 60 days of vesting
+        vm.warp(block.timestamp + 13 days + 60 days);
+        assertEq(presale.getClaimableCreatorAmount(), 300_000_000 ether);
+
+        vm.prank(alice);
+        presale.claimCreator();
+        assertEq(FlapTaxTokenV3(token).balanceOf(alice), 300_000_000 ether);
     }
 }
 

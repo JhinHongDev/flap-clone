@@ -34,9 +34,9 @@ contract FlapPresaleFactory is Ownable {
     /// @notice Immutable FlapPresale implementation address used for cloning.
     address public immutable presaleImplementation;
 
-    /// @notice Fixed custody amount pulled into each presale: Liquidity + Presale (CUSTODY_TOKEN_AMOUNT).
-    ///         The remainder of the supply stays with the creator and is never custodied.
-    uint256 public constant CUSTODY_TOKEN_AMOUNT = 700_000_000 ether;
+    /// @notice Fixed custody amount pulled into each presale: 100% total supply (1 Billion).
+    ///         200M for liquidity, 500M for presale, 300M for creator locked vesting.
+    uint256 public constant CUSTODY_TOKEN_AMOUNT = 1_000_000_000 ether;
 
     /// @notice All presales created by this factory.
     address[] private _allPresales;
@@ -88,8 +88,10 @@ contract FlapPresaleFactory is Ownable {
                 maxBuyPerWallet: params.maxBuyPerWallet,
                 startTime: params.startTime,
                 endTime: params.endTime,
-                tgePercentage: params.tgePercentage,
-                vestingDuration: params.vestingDuration
+                userCliff: params.userCliff,
+                userVestingDuration: params.userVestingDuration,
+                creatorCliff: params.creatorCliff,
+                creatorVestingDuration: params.creatorVestingDuration
             })
         );
 

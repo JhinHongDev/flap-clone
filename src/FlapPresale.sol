@@ -12,10 +12,13 @@ import {IPancakeRouter02} from "src/interfaces/IPancakeRouter02.sol";
 
 /// @title FlapPresale
 /// @notice Manages BNB presale subscriptions, PancakeSwap V2 liquidity injection with burned LP,
-///         and linear vesting claim schedules for FlapTaxTokenV3 on BSC.
-/// @dev Supply split: LIQUIDITY_TOKEN_AMOUNT for liquidity, PRESALE_TOKEN_AMOUNT for presale,
-///      and the remainder (TOTAL_SUPPLY - CUSTODY_TOKEN_AMOUNT) held by the creator.
-///      Only CUSTODY_TOKEN_AMOUNT is custodied here (see constants).
+///         linear vesting claim schedules for users, and locked vesting schedules for creator tokens
+///         for FlapTaxTokenV3 on BSC.
+/// @dev Supply split:
+///      - 20% (200M / LIQUIDITY_TOKEN_AMOUNT) injected into PancakeSwap V2 pool, LP burned forever.
+///      - 50% (500M / PRESALE_TOKEN_AMOUNT) allocated for user presale subscription.
+///      - 30% (300M / CREATOR_TOKEN_AMOUNT) locked in this contract for creator, released via Cliff + Vesting.
+///      100% (1B / CUSTODY_TOKEN_AMOUNT) is custodied in this contract from presale creation.
 contract FlapPresale is Initializable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
 
@@ -32,7 +35,6 @@ contract FlapPresale is Initializable, OwnableUpgradeable, ReentrancyGuardUpgrad
     error TokenOwnershipNotHeld(address currentOwner);
     error ClaimNotAvailable();
     error NothingToClaim();
-    error InvalidVestingParams(uint16 tgePercentage);
     error CallerNotAuthorized();
 
     // --- Events ---
@@ -42,25 +44,29 @@ contract FlapPresale is Initializable, OwnableUpgradeable, ReentrancyGuardUpgrad
         uint256 hardcap,
         uint256 startTime,
         uint256 endTime,
-        uint16 tgePercentage,
-        uint256 vestingDuration
+        uint256 userCliff,
+        uint256 userVestingDuration,
+        uint256 creatorCliff,
+        uint256 creatorVestingDuration
     );
     event PresaleDeposited(address indexed user, uint256 bnbAmount, uint256 totalUserDeposit);
     event PresaleFinalized(
         uint256 totalRaisedBNB,
         uint256 liquidityTokens,
         uint256 presaleTokens,
+        uint256 creatorTokens,
         uint256 timestamp
     );
     event TokensClaimed(address indexed user, uint256 amount, uint256 totalClaimed);
+    event CreatorTokensClaimed(address indexed creator, uint256 amount, uint256 totalClaimed);
 
     // --- Constants ---
-    uint256 public constant TOTAL_SUPPLY = 1_000_000_000 ether;       // 10 亿固定总量
-    uint256 public constant LIQUIDITY_TOKEN_AMOUNT = 200_000_000 ether; // 加池份额（可调）
-    uint256 public constant PRESALE_TOKEN_AMOUNT = 500_000_000 ether;   // 预售份额（可调）
-    /// @notice 托管在本合约内的代币总量 = 加池份额 + 预售份额。
-    ///        其余部分（TOTAL_SUPPLY - CUSTODY_TOKEN_AMOUNT）由创建者自持，不进入本合约。
-    uint256 public constant CUSTODY_TOKEN_AMOUNT = LIQUIDITY_TOKEN_AMOUNT + PRESALE_TOKEN_AMOUNT;
+    uint256 public constant TOTAL_SUPPLY = 1_000_000_000 ether;         // 10 亿固定总量
+    uint256 public constant LIQUIDITY_TOKEN_AMOUNT = 200_000_000 ether;   // 20% 底池流动性份额 (2 亿枚)
+    uint256 public constant PRESALE_TOKEN_AMOUNT = 500_000_000 ether;     // 50% 散户预售认购份额 (5 亿枚)
+    uint256 public constant CREATOR_TOKEN_AMOUNT = 300_000_000 ether;     // 30% 创建者锁仓份额 (3 亿枚)
+    /// @notice 托管在本合约内的代币总量 = 100% (10 亿枚)。
+    uint256 public constant CUSTODY_TOKEN_AMOUNT = TOTAL_SUPPLY;
     uint256 public constant BPS_DENOMINATOR = 10000;
     address public constant BLACK_HOLE = 0x000000000000000000000000000000000000dEaD;
 
@@ -74,8 +80,10 @@ contract FlapPresale is Initializable, OwnableUpgradeable, ReentrancyGuardUpgrad
         uint256 maxBuyPerWallet;
         uint256 startTime;
         uint256 endTime;
-        uint16 tgePercentage;      // bps (e.g. 2000 = 20% unlocked at TGE)
-        uint256 vestingDuration;   // seconds (e.g. 30 days linear release)
+        uint256 userCliff;              // seconds lock before user vesting starts
+        uint256 userVestingDuration;    // seconds linear release for users
+        uint256 creatorCliff;           // seconds lock before creator vesting starts
+        uint256 creatorVestingDuration; // seconds linear release for creator
     }
 
     // --- State Variables ---
@@ -89,8 +97,12 @@ contract FlapPresale is Initializable, OwnableUpgradeable, ReentrancyGuardUpgrad
     uint256 public startTime;
     uint256 public endTime;
 
-    uint16 public tgePercentage;
-    uint256 public vestingDuration;
+    uint256 public userCliff;
+    uint256 public userVestingDuration;
+
+    uint256 public creatorCliff;
+    uint256 public creatorVestingDuration;
+    uint256 public creatorClaimed;
 
     uint256 public totalDepositedBNB;
     bool public presaleFinalized;
@@ -112,9 +124,6 @@ contract FlapPresale is Initializable, OwnableUpgradeable, ReentrancyGuardUpgrad
         if (params.creator == address(0) || params.token == address(0) || params.router == address(0)) {
             revert ZeroAddress();
         }
-        if (params.tgePercentage > BPS_DENOMINATOR) {
-            revert InvalidVestingParams(params.tgePercentage);
-        }
 
         __Ownable_init();
         __ReentrancyGuard_init();
@@ -129,8 +138,11 @@ contract FlapPresale is Initializable, OwnableUpgradeable, ReentrancyGuardUpgrad
         startTime = params.startTime;
         endTime = params.endTime;
 
-        tgePercentage = params.tgePercentage;
-        vestingDuration = params.vestingDuration;
+        userCliff = params.userCliff;
+        userVestingDuration = params.userVestingDuration;
+
+        creatorCliff = params.creatorCliff;
+        creatorVestingDuration = params.creatorVestingDuration;
 
         emit PresaleInitialized(
             params.token,
@@ -138,8 +150,10 @@ contract FlapPresale is Initializable, OwnableUpgradeable, ReentrancyGuardUpgrad
             params.hardcap,
             params.startTime,
             params.endTime,
-            params.tgePercentage,
-            params.vestingDuration
+            params.userCliff,
+            params.userVestingDuration,
+            params.creatorCliff,
+            params.creatorVestingDuration
         );
     }
 
@@ -231,7 +245,29 @@ contract FlapPresale is Initializable, OwnableUpgradeable, ReentrancyGuardUpgrad
         // 4. Transfer token ownership to creator
         OwnableUpgradeable(token).transferOwnership(creator);
 
-        emit PresaleFinalized(totalDepositedBNB, LIQUIDITY_TOKEN_AMOUNT, PRESALE_TOKEN_AMOUNT, block.timestamp);
+        emit PresaleFinalized(
+            totalDepositedBNB,
+            LIQUIDITY_TOKEN_AMOUNT,
+            PRESALE_TOKEN_AMOUNT,
+            CREATOR_TOKEN_AMOUNT,
+            block.timestamp
+        );
+    }
+
+    /// @notice Claim unlocked creator tokens according to the cliff and linear vesting schedule.
+    function claimCreator() external nonReentrant {
+        if (msg.sender != creator && msg.sender != owner()) {
+            revert CallerNotAuthorized();
+        }
+        if (!presaleFinalized) revert PresaleNotFinalized();
+
+        uint256 claimable = getClaimableCreatorAmount();
+        if (claimable == 0) revert NothingToClaim();
+
+        creatorClaimed += claimable;
+        IERC20(token).safeTransfer(creator, claimable);
+
+        emit CreatorTokensClaimed(creator, claimable, creatorClaimed);
     }
 
     // --- View Functions ---
@@ -244,7 +280,7 @@ contract FlapPresale is Initializable, OwnableUpgradeable, ReentrancyGuardUpgrad
         return (userDeposits[user] * PRESALE_TOKEN_AMOUNT) / totalDepositedBNB;
     }
 
-    /// @notice Computes currently claimable tokens for a user based on linear vesting formula.
+    /// @notice Computes currently claimable tokens for a user based on cliff and linear vesting formula.
     /// @param user Address of the participant.
     /// @return claimable Amount of tokens available to claim right now.
     function getClaimableAmount(address user) public view returns (uint256 claimable) {
@@ -253,22 +289,64 @@ contract FlapPresale is Initializable, OwnableUpgradeable, ReentrancyGuardUpgrad
         uint256 totalUserTokens = getUserTotalTokens(user);
         if (totalUserTokens == 0) return 0;
 
-        uint256 unlocked;
         uint256 elapsed = block.timestamp > vestingStartTime ? block.timestamp - vestingStartTime : 0;
+        if (elapsed < userCliff) return 0;
 
-        if (vestingDuration == 0 || elapsed >= vestingDuration) {
+        uint256 unlocked;
+        uint256 vestingElapsed = elapsed - userCliff;
+
+        if (userVestingDuration == 0 || vestingElapsed >= userVestingDuration) {
             unlocked = totalUserTokens;
         } else {
-            uint256 tgeAmount = (totalUserTokens * tgePercentage) / BPS_DENOMINATOR;
-            uint256 remaining = totalUserTokens - tgeAmount;
-            uint256 vested = (remaining * elapsed) / vestingDuration;
-            unlocked = tgeAmount + vested;
+            unlocked = (totalUserTokens * vestingElapsed) / userVestingDuration;
         }
 
         uint256 alreadyClaimed = userClaimed[user];
         if (unlocked > alreadyClaimed) {
             claimable = unlocked - alreadyClaimed;
         }
+    }
+
+    /// @notice Computes currently claimable tokens for the creator based on cliff and linear vesting schedule.
+    /// @return claimable Amount of tokens available for the creator to claim right now.
+    function getClaimableCreatorAmount() public view returns (uint256 claimable) {
+        if (!presaleFinalized) return 0;
+
+        uint256 elapsed = block.timestamp > vestingStartTime ? block.timestamp - vestingStartTime : 0;
+        if (elapsed < creatorCliff) return 0;
+
+        uint256 unlocked;
+        uint256 vestingElapsed = elapsed - creatorCliff;
+
+        if (creatorVestingDuration == 0 || vestingElapsed >= creatorVestingDuration) {
+            unlocked = CREATOR_TOKEN_AMOUNT;
+        } else {
+            unlocked = (CREATOR_TOKEN_AMOUNT * vestingElapsed) / creatorVestingDuration;
+        }
+
+        uint256 alreadyClaimed = creatorClaimed;
+        if (unlocked > alreadyClaimed) {
+            claimable = unlocked - alreadyClaimed;
+        }
+    }
+
+    /// @notice Returns full summary for creator vesting.
+    function getCreatorInfo()
+        external
+        view
+        returns (
+            uint256 totalTokens,
+            uint256 claimedTokens,
+            uint256 claimableTokens,
+            uint256 cliffEndTime,
+            uint256 vestingEndTime
+        )
+    {
+        totalTokens = CREATOR_TOKEN_AMOUNT;
+        claimedTokens = creatorClaimed;
+        claimableTokens = getClaimableCreatorAmount();
+        cliffEndTime = presaleFinalized ? vestingStartTime + creatorCliff : 0;
+        vestingEndTime = presaleFinalized ? cliffEndTime + creatorVestingDuration : 0;
     }
 
     /// @notice Returns full presale summary for a specific user.
@@ -279,18 +357,27 @@ contract FlapPresale is Initializable, OwnableUpgradeable, ReentrancyGuardUpgrad
             uint256 depositBNB,
             uint256 totalTokens,
             uint256 claimedTokens,
-            uint256 claimableTokens
+            uint256 claimableTokens,
+            uint256 cliffEndTime,
+            uint256 vestingEndTime
         )
     {
         depositBNB = userDeposits[user];
         totalTokens = getUserTotalTokens(user);
         claimedTokens = userClaimed[user];
         claimableTokens = getClaimableAmount(user);
+        cliffEndTime = presaleFinalized ? vestingStartTime + userCliff : 0;
+        vestingEndTime = presaleFinalized ? cliffEndTime + userVestingDuration : 0;
     }
 
     /// @notice Returns total number of unique presale participants.
     function totalParticipants() external view returns (uint256) {
         return participants.length;
+    }
+
+    /// @notice Backward-compatible view alias
+    function vestingDuration() external view returns (uint256) {
+        return userVestingDuration;
     }
 
     receive() external payable {

@@ -76,8 +76,10 @@ contract FlapPresaleTest is Test {
                 maxBuyPerWallet: 5 ether,
                 startTime: 0,
                 endTime: 0,
-                tgePercentage: 2000,       // 20% TGE
-                vestingDuration: 10 days   // 10 days linear release
+                userCliff: 7 days,             // 7 days lock before user vesting starts (0 at TGE)
+                userVestingDuration: 10 days,  // 10 days linear release after cliff
+                creatorCliff: 30 days,         // 30 days lock before creator vesting starts
+                creatorVestingDuration: 60 days // 60 days linear release after cliff
             })
         );
 
@@ -103,9 +105,9 @@ contract FlapPresaleTest is Test {
             })
         );
 
-        // Token was minted to this test contract during initialize(); transfer custody amount
-        // (700M = 200M liquidity + 500M presale) & ownership to presale; 300M stays here (creator-held)
-        token.transfer(address(presale), 700_000_000 ether);
+        // Token was minted to this test contract during initialize(); transfer full custody amount
+        // (100% = 1B = 200M liquidity + 500M presale + 300M creator locked) & ownership to presale.
+        token.transfer(address(presale), 1_000_000_000 ether);
         token.transferOwnership(address(presale));
 
         // Fund test users
@@ -162,7 +164,7 @@ contract FlapPresaleTest is Test {
         assertEq(token.owner(), creator);
     }
 
-    function test_VestingClaim_TGE_And_Linear() public {
+    function test_VestingClaim_Cliff_And_Linear() public {
         // Alice deposits 4 BNB (100% of presale) -> entitled to 500,000,000 tokens
         vm.prank(alice);
         presale.deposit{value: 4 ether}();
@@ -170,31 +172,170 @@ contract FlapPresaleTest is Test {
         vm.prank(creator);
         presale.finalizePresale();
 
-        // 1. Immediately after finalization: Alice claims 20% TGE
-        // 20% of 500,000,000 = 100,000,000 tokens
-        assertEq(presale.getClaimableAmount(alice), 100_000_000 ether);
+        // 1. Immediately after finalization: Alice has 0 claimable tokens (during 7-day Cliff)
+        assertEq(presale.getClaimableAmount(alice), 0);
+        assertEq(token.balanceOf(alice), 0);
 
         vm.prank(alice);
+        vm.expectRevert(FlapPresale.NothingToClaim.selector);
         presale.claim();
-        assertEq(token.balanceOf(alice), 100_000_000 ether);
+
+        // 2. Warp 3 days (still within Cliff) -> still 0 claimable
+        vm.warp(block.timestamp + 3 days);
         assertEq(presale.getClaimableAmount(alice), 0);
 
-        // 2. Warp 5 days (50% of the 10-day vesting duration)
-        // Remaining 400,000,000 * 50% = 200,000,000 tokens unlocked
+        // 3. Warp to end of user Cliff (day 7) -> 0 linear elapsed
+        vm.warp(block.timestamp + 4 days);
+        assertEq(presale.getClaimableAmount(alice), 0);
+
+        // 4. Warp 5 days into user vesting (50% of the 10-day vesting duration)
+        // 50% of 500,000,000 = 250,000,000 tokens unlocked
         vm.warp(block.timestamp + 5 days);
-        assertEq(presale.getClaimableAmount(alice), 200_000_000 ether);
+        assertEq(presale.getClaimableAmount(alice), 250_000_000 ether);
 
         vm.prank(alice);
         presale.claim();
-        assertEq(token.balanceOf(alice), 300_000_000 ether); // 100M + 200M
+        assertEq(token.balanceOf(alice), 250_000_000 ether);
+        assertEq(presale.getClaimableAmount(alice), 0);
 
-        // 3. Warp another 5 days (total 10 days - 100% complete)
+        // 5. Warp another 5 days (total 10 days vesting complete)
+        // Remaining 250,000,000 tokens unlocked
         vm.warp(block.timestamp + 5 days);
-        assertEq(presale.getClaimableAmount(alice), 200_000_000 ether); // Final 200M
+        assertEq(presale.getClaimableAmount(alice), 250_000_000 ether);
 
         vm.prank(alice);
         presale.claim();
         assertEq(token.balanceOf(alice), 500_000_000 ether); // 100% of 500M presale allocation
         assertEq(presale.getClaimableAmount(alice), 0);
+    }
+
+    function test_CreatorVesting_CliffAndLinear() public {
+        vm.prank(alice);
+        presale.deposit{value: 4 ether}();
+
+        vm.prank(creator);
+        presale.finalizePresale();
+
+        // 1. Immediately after finalize: Creator has 0 claimable tokens during Cliff (30 days)
+        assertEq(presale.getClaimableCreatorAmount(), 0);
+        assertEq(token.balanceOf(creator), 0);
+
+        vm.prank(creator);
+        vm.expectRevert(FlapPresale.NothingToClaim.selector);
+        presale.claimCreator();
+
+        // 2. Warp 15 days (still within Cliff) -> still 0 claimable
+        vm.warp(block.timestamp + 15 days);
+        assertEq(presale.getClaimableCreatorAmount(), 0);
+
+        // 3. Warp to end of Cliff (day 30) -> 0 linear elapsed
+        vm.warp(block.timestamp + 15 days);
+        assertEq(presale.getClaimableCreatorAmount(), 0);
+
+        // 4. Warp 30 days into creator vesting (50% of 60 days vesting duration)
+        // 50% of 300,000,000 = 150,000,000 ether
+        vm.warp(block.timestamp + 30 days);
+        assertEq(presale.getClaimableCreatorAmount(), 150_000_000 ether);
+
+        vm.prank(creator);
+        presale.claimCreator();
+        assertEq(token.balanceOf(creator), 150_000_000 ether);
+        assertEq(presale.getClaimableCreatorAmount(), 0);
+
+        // 5. Warp remaining 30 days (total 60 days vesting complete)
+        // Remaining 150,000,000 ether unlocked
+        vm.warp(block.timestamp + 30 days);
+        assertEq(presale.getClaimableCreatorAmount(), 150_000_000 ether);
+
+        vm.prank(creator);
+        presale.claimCreator();
+        assertEq(token.balanceOf(creator), 300_000_000 ether); // Full 300M creator allocation
+        assertEq(presale.getClaimableCreatorAmount(), 0);
+    }
+
+    function test_CreatorVesting_RevertUnauthorized() public {
+        vm.prank(alice);
+        presale.deposit{value: 4 ether}();
+
+        vm.prank(creator);
+        presale.finalizePresale();
+
+        vm.warp(block.timestamp + 100 days);
+
+        vm.prank(bob);
+        vm.expectRevert(FlapPresale.CallerNotAuthorized.selector);
+        presale.claimCreator();
+    }
+
+    function test_CreatorVesting_RevertBeforeFinalized() public {
+        vm.prank(alice);
+        presale.deposit{value: 4 ether}();
+
+        vm.prank(creator);
+        vm.expectRevert(FlapPresale.PresaleNotFinalized.selector);
+        presale.claimCreator();
+    }
+
+    function test_CreatorVesting_ZeroDurationImmediateAfterCliff() public {
+        // Deploy separate token for this test
+        FlapTaxTokenV3 token2 = FlapTaxTokenV3(Clones.clone(address(new FlapTaxTokenV3(1000 ether, 10000 ether))));
+        address[] memory pools = new address[](1);
+        pools[0] = address(0x999);
+        token2.initialize(
+            IFlapTaxTokenV3.InitParams({
+                name: "Test Token 2",
+                symbol: "TEST2",
+                meta: "ipfs://test2",
+                buyTax: 500,
+                sellTax: 500,
+                taxProcessor: taxProcessor,
+                dividendContract: address(0),
+                quoteToken: address(wbnb),
+                liqExpectedOutputAmount: 0,
+                taxDuration: 30 days,
+                pools: pools,
+                v2Router: address(router),
+                antiFarmerDuration: 1 days
+            })
+        );
+
+        // Deploy a new presale instance with creatorVestingDuration = 0
+        FlapPresale zeroVestingPresale = FlapPresale(payable(Clones.clone(address(new FlapPresale()))));
+        zeroVestingPresale.initialize(
+            FlapPresale.PresaleInitParams({
+                creator: creator,
+                token: address(token2),
+                router: address(router),
+                hardcap: 10 ether,
+                minBuyPerWallet: 0.1 ether,
+                maxBuyPerWallet: 5 ether,
+                startTime: 0,
+                endTime: 0,
+                userCliff: 0,
+                userVestingDuration: 0,
+                creatorCliff: 10 days,
+                creatorVestingDuration: 0 // Unlocks 100% immediately when cliff ends
+            })
+        );
+
+        token2.transfer(address(zeroVestingPresale), 1_000_000_000 ether);
+        token2.transferOwnership(address(zeroVestingPresale));
+
+        vm.prank(alice);
+        zeroVestingPresale.deposit{value: 2 ether}();
+
+        vm.prank(creator);
+        zeroVestingPresale.finalizePresale();
+
+        // During cliff: 0 claimable
+        assertEq(zeroVestingPresale.getClaimableCreatorAmount(), 0);
+
+        // After cliff: 100% (300M) unlocked immediately
+        vm.warp(block.timestamp + 10 days);
+        assertEq(zeroVestingPresale.getClaimableCreatorAmount(), 300_000_000 ether);
+
+        vm.prank(creator);
+        zeroVestingPresale.claimCreator();
+        assertEq(token2.balanceOf(creator), 300_000_000 ether);
     }
 }
